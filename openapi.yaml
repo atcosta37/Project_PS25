@@ -1,0 +1,252 @@
+openapi: 3.0.3
+info:
+  title: API de Gestão de Energia Solar
+  description: API para gestão da produção e consumo de energia renovável com cookies para autenticação e controlo de papéis (cliente/técnico).
+  version: 1.1.0
+
+servers:
+  - url: https://localhost:3000/
+
+paths:
+  /auth/login:
+    post:
+      summary: Autenticação do utilizador e definição de cookie de sessão
+      tags: [Autenticação]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email:
+                  type: string
+                senha:
+                  type: string
+      responses:
+        '200':
+          description: Login bem-sucedido
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: session_token=jwt_token_aqui; HttpOnly; Path=/; Secure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mensagem:
+                    type: string
+                    example: Autenticado com sucesso
+                  papel:
+                    type: string
+                    enum: [cliente, tecnico]
+         
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /instalacoes:
+    post:
+      summary: Registar nova instalação de painéis solares (apenas clientes)
+      tags: [Instalações]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NovaInstalacao'
+      responses:
+        '201':
+          description: Instalação registada com sucesso
+          
+        '400':
+          description: Dados inválidos
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: Acesso negado. Apenas clientes podem registar instalações.
+     
+
+    get:
+      summary: Listar instalações
+      tags: [Instalações]
+      responses:
+        '200':
+          description: Lista de instalações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Instalacao'
+          x-mock-response-name: Lista de instalações
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /certificados:
+    post:
+      summary: Emitir certificado (apenas técnicos)
+      tags: [Certificados]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instalacaoId, tecnicoId]
+              properties:
+                instalacaoId:
+                  type: string
+                tecnicoId:
+                  type: string
+      responses:
+        '201':
+          description: Certificado emitido
+          x-mock-response-name: Certificado emitido
+        '403':
+          description: Acesso negado (não é técnico)
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /producao/monitorizar:
+    get:
+      summary: Produção atual (simulada)
+      tags: [Produção]
+      responses:
+        '200':
+          description: Produção atual
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kwGerados:
+                    type: number
+                    example: 5.73
+         
+
+  /creditos/calcular:
+    post:
+      summary: Calcular créditos mensais de energia
+      tags: [Créditos]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clienteId, leituraAtual]
+              properties:
+                clienteId:
+                  type: string
+                leituraAtual:
+                  type: number
+      responses:
+        '200':
+          description: Créditos calculados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  kwAcumulados:
+                    type: number
+                  valorCredito:
+                    type: number
+          x-mock-response-name: Créditos simulados
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: session_token
+
+  responses:
+    UnauthorizedError:
+      description: Utilizador não autenticado ou sessão expirada
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Não autorizado
+
+  headers:
+    Cache-Control:
+      schema:
+        type: string
+        example: no-cache
+    Content-Type:
+      schema:
+        type: string
+        example: application/json
+    Accept:
+      schema:
+        type: string
+        example: application/json
+
+  schemas:
+    NovaInstalacao:
+      type: object
+      required:
+        - clienteId
+        - localizacao
+        - capacidadeKw
+        - tipoPainel
+        - orientacao
+        - inclinacao
+        - dataInstalacao
+      properties:
+        clienteId:
+          type: string
+        localizacao:
+          type: object
+          required: [latitude, longitude, morada]
+          properties:
+            latitude:
+              type: number
+              format: float
+            longitude:
+              type: number
+              format: float
+            morada:
+              type: string
+        capacidadeKw:
+          type: number
+          format: float
+        tipoPainel:
+          type: string
+          example: Monocristalino
+        orientacao:
+          type: string
+          example: Sul
+        inclinacao:
+          type: number
+          format: float
+          example: 30.0
+        dataInstalacao:
+          type: string
+          format: date
+
+    
+    Instalacao:
+      type: object
+      properties:
+        id:
+          type: string
+        clienteId:
+          type: string
+        localizacao:
+          type: string
+        capacidadeKw:
+          type: number
+        certificada:
+          type: boolean
+        

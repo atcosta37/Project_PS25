@@ -85,31 +85,42 @@ paths:
         '401':
           $ref: '#/components/responses/UnauthorizedError'
 
-  /certificados:
+  /certificados/upload/{instalacaoId}:
     post:
-      summary: Emitir certificado (apenas técnicos)
+      summary: Upload de certificado PDF para uma instalação (apenas técnicos)
       tags: [Certificados]
+      parameters:
+        - in: path
+          name: instalacaoId
+          required: true
+          schema:
+            type: string
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
-              required: [instalacaoId, tecnicoId]
               properties:
-                instalacaoId:
+                certificado:
                   type: string
-                tecnicoId:
-                  type: string
+                  format: binary
       responses:
-        '201':
-          description: Certificado emitido
-          x-mock-response-name: Certificado emitido
-        '403':
-          description: Acesso negado (não é técnico)
+        '200':
+          description: Certificado carregado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  path:
+                    type: string
         '401':
           $ref: '#/components/responses/UnauthorizedError'
-
+        '403':
+          description: Acesso negado (não é técnico)
   /producao/monitorizar:
     get:
       summary: Produção atual (simulada)
@@ -137,12 +148,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [clienteId, leituraAtual]
+              required: [clienteId]
               properties:
                 clienteId:
                   type: string
-                leituraAtual:
-                  type: number
       responses:
         '200':
           description: Créditos calculados
@@ -247,6 +256,25 @@ components:
           type: string
         capacidadeKw:
           type: number
-        certificada:
-          type: boolean
-        
+        certificado:
+          type: string
+          description: Caminho para o PDF do certificado
+        producaoTotal:
+          type: number
+          description: Produção total acumulada em kW
+    
+    Utilizador:
+      type: object
+      properties:
+        id:
+          type: string
+        nome:
+          type: string
+        email:
+          type: string
+        papel:
+          type: string
+          enum: [cliente, tecnico, gestor]
+        producaoTotal:
+          type: number
+          description: Produção total acumulada em kW
